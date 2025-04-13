@@ -21,7 +21,7 @@ const rooms = new Map<string, any>();
 io.on('connection', (socket) => {
     console.log("New client connected:", socket.id);
 
-    socket.on('joinRomm', (roomId:string) => {
+    socket.on('joinRoom', (roomId:string) => {
         socket.join(roomId);
         if(!rooms.has(roomId)) {
             rooms.set(roomId, {elements : []})
@@ -41,7 +41,7 @@ io.on('connection', (socket) => {
     })
 })
 
+
 server.listen(3001, () => {
     console.log('websocket server running on port 3001')
 })
-
