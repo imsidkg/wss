@@ -21,12 +21,18 @@ const io = new socket_io_1.Server(server, {
 const rooms = new Map();
 io.on('connection', (socket) => {
     console.log("New client connected:", socket.id);
+    socket.on('ping', (timestamp) => {
+        socket.emit('pong', timestamp);
+    });
     socket.on('joinRoom', (roomId) => {
+        var _a;
         socket.join(roomId);
         if (!rooms.has(roomId)) {
             rooms.set(roomId, { elements: [] });
         }
         socket.emit('roomData', rooms.get(roomId));
+        const users = ((_a = io.sockets.adapter.rooms.get(roomId)) === null || _a === void 0 ? void 0 : _a.size) || 0;
+        io.to(roomId).emit('userCount', users + 1);
     });
     socket.on('updateDrawing', (data) => {
         if (rooms.has(data.roomId)) {

@@ -19,6 +19,9 @@ const io = new Server(server , {
 
 const rooms = new Map<string, any>();
 io.on('connection', (socket) => {
+
+    const cursorThrottle  = 100
+    let lastSent = 0
     console.log("New client connected:", socket.id);
 
     socket.on('joinRoom', (roomId:string) => {
@@ -35,9 +38,40 @@ io.on('connection', (socket) => {
             socket.to(data.roomId).emit('drawingUpdated', data.elements)
         }
     });
+    
+    
+        const activeCursors = new Map<string, {
+            roomId: string;
+            position: { x: number; y: number };
+            lastUpdated: number;
+          }>();
+    socket.on('cursorMove' , (data) => {
+        const now = Date.now();
+    
+        if (now - lastSent < cursorThrottle) return;
+        lastSent = now;
+    
+        if (!data.roomId || !data.position) return;
+        if (typeof data.position.x !== 'number' || 
+            typeof data.position.y !== 'number') return;
+    
+        activeCursors.set(socket.id, {
+          roomId: data.roomId,
+          position: data.position,
+          lastUpdated: now
+        });
+    
+        socket.to(data.roomId).emit('userCursor', {
+          userId: socket.id,
+          position: data.position,
+          timestamp: now
+        });
+    })
+
 
     socket.on('disconnect', () => {
         console.log('Clinet disconnected' , socket.id)
+        activeCursors.delete(socket.id)
     })
 })
 
