@@ -69,10 +69,24 @@ io.on('connection', (socket) => {
     })
 
 
+    const activeUsers = new Map<string, {
+        roomId: string;
+        lastActive: number;
+    }>();
+
     socket.on('disconnect', () => {
-        console.log('Clinet disconnected' , socket.id)
-        activeCursors.delete(socket.id)
-    })
+        console.log('Client disconnected', socket.id);
+        activeCursors.delete(socket.id);
+        activeUsers.delete(socket.id);
+        socket.broadcast.emit('userDisconnected', socket.id);
+    });
+
+    socket.on('presence', (roomId: string) => {
+        activeUsers.set(socket.id, {
+            roomId,
+            lastActive: Date.now()
+        });
+    });
 })
 
 
