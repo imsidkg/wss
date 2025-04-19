@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import socket from '../utils/socket'
+import { UserList } from './components/UserList'
+import { CursorTracker } from './components/CursorTracker'
 
 interface Point {
   x: number
@@ -16,7 +18,10 @@ interface DrawingElement {
 function App() {
  const canvasRef = useRef<HTMLCanvasElement>(null)
  const [elements, setElements] = useState<DrawingElement[]>([])
- const [roomId, setRoomId] = useState('default-room')
+ const [roomId, setRoomId] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('room') || `room-${Math.random().toString(36).substring(2, 8)}`
+ })
  const [isDrawing, setIsDrawing] = useState(false)
  const [color, setColor] = useState('#000000')
  const [userCount , setUserCount] = useState(0)
@@ -88,8 +93,6 @@ const endDrawing = () => {
   socket.emit('updateDrawing', { roomId, elements })
 }
 
-
-
 const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
   if (!isDrawing || !canvasRef.current) return
 
@@ -106,27 +109,44 @@ const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
 }
 
   return (
-    <>
-     <div className="app">
-      <h1>Collaborative Whiteboard</h1>
-      <div className="controls">
-        <input 
-          type="color" 
-          value={color} 
-          onChange={(e) => setColor(e.target.value)} 
+    <div style={{ position: 'relative' }}>
+      <div className="app">
+        <h1>Collaborative Whiteboard</h1>
+        <div className="controls">
+          <div className="room-controls">
+            <div>Room: {roomId}</div>
+            <button onClick={() => navigator.clipboard.writeText(roomId)}>
+              Copy Room ID
+            </button>
+            <input
+              type="text"
+              placeholder="Enter room ID"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setRoomId(e.currentTarget.value)
+                }
+              }}
+            />
+          </div>
+          <input 
+            type="color" 
+            value={color} 
+            onChange={(e) => setColor(e.target.value)} 
+          />
+        </div>
+        <canvas
+          ref={canvasRef}
+          width={800}
+          height={600}
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={endDrawing}
+          onMouseLeave={endDrawing}
         />
+        <CursorTracker roomId={roomId} />
+        <UserList roomId={roomId} />
       </div>
-      <canvas
-        ref={canvasRef}
-        width={800}
-        height={600}
-        onMouseDown={startDrawing}
-        onMouseMove={draw}
-        onMouseUp={endDrawing}
-        onMouseLeave={endDrawing}
-      />
     </div>
-    </>
   )
 }
 
