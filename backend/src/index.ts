@@ -20,7 +20,7 @@ const io = new Server(server , {
 const rooms = new Map<string, any>();
 io.on('connection', (socket) => {
 
-    const cursorThrottle  = 100
+    const cursorThrottle  = 30 
     let lastSent = 0
     console.log("New client connected:", socket.id);
 
@@ -33,7 +33,7 @@ io.on('connection', (socket) => {
     })
 
     socket.on('updateDrawing', (data:{roomId:string, elements:any[]})=> {
-        if(rooms.has(data.roomId)) {
+        if(rooms.has(data.roomId) && socket.rooms.has(data.roomId)) {
             rooms.set(data.roomId, {elements : data.elements})
             socket.to(data.roomId).emit('drawingUpdated', data.elements)
         }

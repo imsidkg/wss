@@ -20,28 +20,56 @@ const io = new socket_io_1.Server(server, {
 });
 const rooms = new Map();
 io.on('connection', (socket) => {
+    const cursorThrottle = 30;
+    let lastSent = 0;
     console.log("New client connected:", socket.id);
-    socket.on('ping', (timestamp) => {
-        socket.emit('pong', timestamp);
-    });
     socket.on('joinRoom', (roomId) => {
-        var _a;
         socket.join(roomId);
         if (!rooms.has(roomId)) {
             rooms.set(roomId, { elements: [] });
         }
         socket.emit('roomData', rooms.get(roomId));
-        const users = ((_a = io.sockets.adapter.rooms.get(roomId)) === null || _a === void 0 ? void 0 : _a.size) || 0;
-        io.to(roomId).emit('userCount', users + 1);
     });
     socket.on('updateDrawing', (data) => {
-        if (rooms.has(data.roomId)) {
+        if (rooms.has(data.roomId) && socket.rooms.has(data.roomId)) {
             rooms.set(data.roomId, { elements: data.elements });
             socket.to(data.roomId).emit('drawingUpdated', data.elements);
         }
     });
+    const activeCursors = new Map();
+    socket.on('cursorMove', (data) => {
+        const now = Date.now();
+        if (now - lastSent < cursorThrottle)
+            return;
+        lastSent = now;
+        if (!data.roomId || !data.position)
+            return;
+        if (typeof data.position.x !== 'number' ||
+            typeof data.position.y !== 'number')
+            return;
+        activeCursors.set(socket.id, {
+            roomId: data.roomId,
+            position: data.position,
+            lastUpdated: now
+        });
+        socket.to(data.roomId).emit('userCursor', {
+            userId: socket.id,
+            position: data.position,
+            timestamp: now
+        });
+    });
+    const activeUsers = new Map();
     socket.on('disconnect', () => {
-        console.log('Clinet disconnected', socket.id);
+        console.log('Client disconnected', socket.id);
+        activeCursors.delete(socket.id);
+        activeUsers.delete(socket.id);
+        socket.broadcast.emit('userDisconnected', socket.id);
+    });
+    socket.on('presence', (roomId) => {
+        activeUsers.set(socket.id, {
+            roomId,
+            lastActive: Date.now()
+        });
     });
 });
 server.listen(3001, () => {
