@@ -38,6 +38,23 @@ io.on('connection', (socket) => {
             socket.to(data.roomId).emit('drawingUpdated', data.elements)
         }
     });
+
+    socket.on('drawingUpdate', (data: {
+      roomId: string,
+      elementIndex: number,
+      point: {x: number, y: number}
+    }) => {
+      if (rooms.has(data.roomId) && socket.rooms.has(data.roomId)) {
+        const room = rooms.get(data.roomId)
+        if (room.elements[data.elementIndex]) {
+          room.elements[data.elementIndex].points.push(data.point)
+          socket.to(data.roomId).emit('drawingPointAdded', {
+            elementIndex: data.elementIndex,
+            point: data.point
+          })
+        }
+      }
+    });
     
     
         const activeCursors = new Map<string, {
