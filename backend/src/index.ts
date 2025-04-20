@@ -104,6 +104,16 @@ io.on('connection', (socket) => {
             lastActive: Date.now()
         });
     });
+
+    socket.on('chatMessage', (data: {roomId: string, message: string, userId: string}) => {
+      if (rooms.has(data.roomId) && typeof data.message === 'string' && data.message.trim().length > 0) {
+        socket.to(data.roomId).emit('newChatMessage', {
+          userId: data.userId,
+          message: data.message,
+          timestamp: Date.now()
+        });
+      }
+    });
 })
 
 
